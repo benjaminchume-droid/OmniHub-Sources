@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "lastUpdated": "2026-09-05",
+  "minOmniHubVersion": "1.0.2",
+  "sources": [
+    {
+      "id": "openai",
+      "name": "ChatGPT",
+      "kind": "API",
+      "authType": "API_KEY",
+      "revision": "1.0.0",
+      "publisher": "OmniHub",
+      "category": "ai",
+      "description": "OpenAI ChatGPT via API",
+      "endpoint": "https://api.openai.com/v1",
+      "websiteUrl": "https://platform.openai.com",
+      "bundled": true
+    },
+    {
+      "id": "anthropic",
+      "name": "Claude",
+      "kind": "API",
+      "authType": "API_KEY",
+      "revision": "1.0.0",
+      "publisher": "OmniHub",
+      "category": "ai",
+      "description": "Anthropic Claude via API",
+      "endpoint": "https://api.anthropic.com",
+      "websiteUrl": "https://console.anthropic.com",
+      "bundled": true
+    },
+    {
+      "id": "gemini",
+      "name": "Gemini",
+      "kind": "API",
+      "authType": "API_KEY",
+      "revision": "1.0.0",
+      "publisher": "OmniHub",
+      "category": "ai",
+      "description": "Google Gemini via API",
+      "endpoint": "https://generativelanguage.googleapis.com",
+      "websiteUrl": "https://aistudio.google.com",
+      "bundled": true
+    }
+  ]
+}

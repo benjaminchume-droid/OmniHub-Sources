@@ -1,0 +1,21 @@
+name: Build Sources (scaffold)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'sources/**'
+      - 'catalog/**'
+      - 'cores/**'
+
+jobs:
+  validate-catalog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate catalog JSON
+        run: |
+          python3 -c "import json; json.load(open('catalog/index.json')); print('catalog OK')"
+          python3 -c "import json; json.load(open('catalog/categories.json')); print('categories OK')"
+      - name: List source manifests
+        run: find sources -name '*.json' | sort

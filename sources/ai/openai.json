@@ -1,0 +1,11 @@
+{
+  "id": "openai",
+  "name": "ChatGPT",
+  "revision": "1.0.0",
+  "core": "apicore",
+  "authType": "API_KEY",
+  "baseUrl": "https://api.openai.com/v1",
+  "chatPath": "/chat/completions",
+  "models": ["gpt-4o", "gpt-4o-mini"],
+  "updatePolicy": "manual"
+}

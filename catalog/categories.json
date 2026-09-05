@@ -1,0 +1,11 @@
+{
+  "categories": [
+    { "id": "ai", "name": "AI / Chat" },
+    { "id": "coding", "name": "Coding / Developer" },
+    { "id": "research", "name": "Research" },
+    { "id": "productivity", "name": "Productivity" },
+    { "id": "cloud", "name": "Cloud / Infrastructure" },
+    { "id": "mcp", "name": "MCP" },
+    { "id": "tools", "name": "Tools" }
+  ]
+}
