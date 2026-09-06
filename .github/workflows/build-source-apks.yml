@@ -6,7 +6,7 @@ on:
       batch_size:
         description: 'Max APKs this run'
         required: false
-        default: '10'
+        default: '5'
       kind:
         description: 'WEB, MCP, or ALL'
         required: false
@@ -18,7 +18,7 @@ permissions:
 jobs:
   build-batch:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
@@ -48,13 +48,13 @@ jobs:
           BATCH: ${{ github.event.inputs.batch_size }}
         run: |
           mkdir -p .factory-state dist
-          touch .factory-state/completed.txt
+          touch .factory-state/apk-completed.txt
           python3 << 'PY'
           import json, os
           from pathlib import Path
           kind = os.environ.get("KIND", "WEB").upper()
-          batch = int(os.environ.get("BATCH", "10"))
-          completed = set(Path(".factory-state/completed.txt").read_text().splitlines())
+          batch = int(os.environ.get("BATCH", "5"))
+          completed = set(Path(".factory-state/apk-completed.txt").read_text().splitlines())
           priority = [
             {"id":"chatgpt","name":"ChatGPT","kind":"WEB","websiteUrl":"https://chatgpt.com"},
             {"id":"claude","name":"Claude","kind":"WEB","websiteUrl":"https://claude.ai"},
@@ -77,14 +77,22 @@ jobs:
           filtered, seen = [], set()
           for s in sources:
               sid = s.get("id")
-              if not sid or sid in seen or sid in completed: continue
+              if not sid or sid in seen or sid in completed:
+                  continue
               k = s.get("kind", "WEB").upper()
-              if k == "API": continue
-              if kind != "ALL" and not (k == kind or (kind == "WEB" and "WEB" in k)): continue
-              seen.add(sid); filtered.append(s)
+              if k == "API":
+                  continue
+              if kind != "ALL" and not (k == kind or (kind == "WEB" and "WEB" in k)):
+                  continue
+              seen.add(sid)
+              filtered.append(s)
           batch_list = filtered[:batch]
           Path(".factory-state/batch.json").write_text(json.dumps(batch_list, indent=2))
-          print(f"Selected {len(batch_list)} (pool {len(filtered)}, done {len(completed)})")
+          print(f"Selected {len(batch_list)} (pool {len(filtered)}, apk-done {len(completed)})")
+          for s in batch_list:
+              print(" -", s["id"], s.get("kind"))
+          if not batch_list:
+              print("Nothing left to build for this kind")
           PY
 
       - name: Build signed APKs
@@ -95,29 +103,79 @@ jobs:
         run: |
           set -e
           python3 << 'PY'
-          import json, shutil, subprocess, textwrap
+          import json, shutil, subprocess, textwrap, sys
           from pathlib import Path
+
           batch = json.loads(Path(".factory-state/batch.json").read_text())
+          if not batch:
+              print("Empty batch — nothing to build")
+              sys.exit(0)
+
           root = Path("factory-work")
-          if root.exists(): shutil.rmtree(root)
+          if root.exists():
+              shutil.rmtree(root)
           root.mkdir()
-          (root / "settings.gradle.kts").write_text('rootProject.name = "OmniSource"\ninclude(":app")\n')
-          (root / "build.gradle.kts").write_text('plugins { id("com.android.application") version "8.2.2" apply false }\n')
-          (root / "gradle.properties").write_text("org.gradle.jvmargs=-Xmx2g\nandroid.useAndroidX=true\n")
+
+          # CRITICAL: Google + Maven Central so AGP resolves
+          (root / "settings.gradle.kts").write_text(textwrap.dedent('''
+          pluginManagement {
+            repositories {
+              google()
+              mavenCentral()
+              gradlePluginPortal()
+            }
+          }
+          dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+              google()
+              mavenCentral()
+            }
+          }
+          rootProject.name = "OmniSource"
+          include(":app")
+          '''))
+          (root / "build.gradle.kts").write_text(
+              'plugins { id("com.android.application") version "8.2.2" apply false }\n'
+          )
+          (root / "gradle.properties").write_text(
+              "org.gradle.jvmargs=-Xmx3g\nandroid.useAndroidX=true\nandroid.nonTransitiveRClass=true\n"
+          )
+
           app = root / "app"
           (app / "src/main/java/com/omnisource").mkdir(parents=True)
           (app / "src/main/res/values").mkdir(parents=True)
           shutil.copy("keystore.jks", root / "keystore.jks")
-          # gradle wrapper once
+
           (root / "gradle/wrapper").mkdir(parents=True)
-          subprocess.check_call(["bash","-lc", f"cd {root} && curl -fsSL -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar && curl -fsSL -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradlew && chmod +x gradlew && printf '%s\n' 'distributionBase=GRADLE_USER_HOME' 'distributionPath=wrapper/dists' 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip' 'networkTimeout=10000' 'validateDistributionUrl=true' 'zipStoreBase=GRADLE_USER_HOME' 'zipStorePath=wrapper/dists' > gradle/wrapper/gradle-wrapper.properties"])
+          subprocess.check_call([
+              "bash", "-lc",
+              f"cd {root} && "
+              "curl -fsSL -o gradle/wrapper/gradle-wrapper.jar "
+              "https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar && "
+              "curl -fsSL -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradlew && "
+              "chmod +x gradlew && "
+              "printf '%s\\n' "
+              "'distributionBase=GRADLE_USER_HOME' "
+              "'distributionPath=wrapper/dists' "
+              "'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip' "
+              "'networkTimeout=10000' "
+              "'validateDistributionUrl=true' "
+              "'zipStoreBase=GRADLE_USER_HOME' "
+              "'zipStorePath=wrapper/dists' "
+              "> gradle/wrapper/gradle-wrapper.properties"
+          ])
+
+          ok_count = 0
           for s in batch:
-              sid = s["id"]; name = s.get("name", sid)
+              sid = s["id"]
+              name = s.get("name", sid)
               url = s.get("websiteUrl") or s.get("baseUrl") or "https://example.com"
               kind = s.get("kind", "WEB").upper()
-              suffix = sid.replace("-", "_").replace(".", "_").lower()
+              suffix = "".join(c if c.isalnum() else "_" for c in sid.lower())
               pkg = f"com.omnisource.{suffix}"
-              print("BUILD", sid)
+              print("BUILD", sid, flush=True)
+
               (app / "build.gradle.kts").write_text(textwrap.dedent(f'''
               plugins {{ id("com.android.application") }}
               android {{
@@ -139,10 +197,9 @@ jobs:
                   }}
                 }}
                 buildTypes {{
-                  release {{
-                    isMinifyEnabled = true
+                  getByName("release") {{
+                    isMinifyEnabled = false
                     signingConfig = signingConfigs.getByName("release")
-                    proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
                   }}
                 }}
                 compileOptions {{
@@ -150,26 +207,34 @@ jobs:
                   targetCompatibility = JavaVersion.VERSION_17
                 }}
               }}
-              dependencies {{ implementation("androidx.appcompat:appcompat:1.6.1") }}
+              dependencies {{
+                implementation("androidx.appcompat:appcompat:1.6.1")
+              }}
               '''))
+
               (app / "src/main/AndroidManifest.xml").write_text(f'''<?xml version="1.0" encoding="utf-8"?>
-              <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-                <uses-permission android:name="android.permission.INTERNET"/>
-                <application android:label="{name}" android:icon="@android:drawable/sym_def_app_icon" android:allowBackup="false">
-                  <meta-data android:name="omnihub.source.id" android:value="{sid}"/>
-                  <meta-data android:name="omnihub.source.name" android:value="{name}"/>
-                  <meta-data android:name="omnihub.source.kind" android:value="{kind}"/>
-                  <meta-data android:name="omnihub.source.url" android:value="{url}"/>
-                  <activity android:name=".BridgeActivity" android:exported="true">
-                    <intent-filter>
-                      <action android:name="android.intent.action.MAIN"/>
-                      <category android:name="android.intent.category.LAUNCHER"/>
-                    </intent-filter>
-                  </activity>
-                </application>
-              </manifest>
-              ''')
-              (app / "src/main/java/com/omnisource/BridgeActivity.kt").write_text(f'''package {pkg}
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+            <uses-permission android:name="android.permission.INTERNET"/>
+            <application
+              android:label="{name}"
+              android:icon="@android:drawable/sym_def_app_icon"
+              android:allowBackup="false">
+              <meta-data android:name="omnihub.source.id" android:value="{sid}"/>
+              <meta-data android:name="omnihub.source.name" android:value="{name}"/>
+              <meta-data android:name="omnihub.source.kind" android:value="{kind}"/>
+              <meta-data android:name="omnihub.source.url" android:value="{url}"/>
+              <activity android:name=".BridgeActivity" android:exported="true">
+                <intent-filter>
+                  <action android:name="android.intent.action.MAIN"/>
+                  <category android:name="android.intent.category.LAUNCHER"/>
+                </intent-filter>
+              </activity>
+            </application>
+          </manifest>
+          ''')
+
+              (app / "src/main/java/com/omnisource/BridgeActivity.kt").write_text(textwrap.dedent(f'''
+              package {pkg}
               import android.app.Activity
               import android.os.Bundle
               import android.widget.TextView
@@ -177,24 +242,53 @@ jobs:
                 override fun onCreate(savedInstanceState: Bundle?) {{
                   super.onCreate(savedInstanceState)
                   val tv = TextView(this)
-                  tv.text = "{name}\nOmniSource {kind}\nUse from OmniHub"
-                  tv.setPadding(48,48,48,48)
+                  tv.text = "{name}\\nOmniSource {kind}\\nUse from OmniHub"
+                  tv.setPadding(48, 48, 48, 48)
                   setContentView(tv)
                 }}
               }}
-              ''')
-              (app / "src/main/res/values/strings.xml").write_text(f'<resources><string name="app_name">{name}</string></resources>\n')
-              r = subprocess.run(["bash","-lc", f"cd {root} && ./gradlew :app:assembleRelease --no-daemon"], capture_output=True, text=True)
+              '''))
+              (app / "src/main/res/values/strings.xml").write_text(
+                  f'<resources><string name="app_name">{name}</string></resources>\\n'
+              )
+
+              r = subprocess.run(
+                  ["bash", "-lc", f"cd {root} && ./gradlew :app:assembleRelease --no-daemon --stacktrace"],
+                  capture_output=True, text=True
+              )
               if r.returncode != 0:
-                  print(r.stdout[-1500:]); print(r.stderr[-1500:]); print("FAIL", sid); continue
+                  print(r.stdout[-2500:])
+                  print(r.stderr[-2500:])
+                  print("FAIL", sid, flush=True)
+                  continue
+
               apk = next((root / "app/build/outputs/apk/release").glob("*.apk"), None)
               if not apk:
-                  print("NO APK", sid); continue
+                  print("NO APK", sid, flush=True)
+                  continue
+
               dest = Path("dist") / f"{sid}-1.0.0.apk"
               shutil.copy(apk, dest)
-              with open(".factory-state/completed.txt", "a") as f: f.write(sid + "\n")
-              print("OK", sid, dest.stat().st_size)
+              with open(".factory-state/apk-completed.txt", "a") as f:
+                  f.write(sid + "\\n")
+              ok_count += 1
+              print("OK", sid, dest.stat().st_size, flush=True)
+
+          print(f"Built {ok_count}/{len(batch)} APKs")
+          if ok_count == 0:
+              print("FATAL: zero APKs produced")
+              sys.exit(1)
           PY
+
+      - name: Verify APKs exist
+        run: |
+          ls -lah dist/*.apk
+          COUNT=$(ls dist/*.apk 2>/dev/null | wc -l)
+          echo "APK count=$COUNT"
+          if [ "$COUNT" -lt 1 ]; then
+            echo "FATAL: no APKs in dist/"
+            exit 1
+          fi
 
       - name: Commit state
         run: |
@@ -209,8 +303,11 @@ jobs:
         with:
           tag_name: sources-${{ github.run_number }}
           name: OmniSource APKs ${{ github.run_number }}
-          body: Signed provider APKs for OmniHub Store. Enable Install unknown apps for OmniHub.
+          body: |
+            Signed provider APKs for OmniHub Store.
+            Enable **Install unknown apps** for OmniHub, then install from Store.
           files: dist/*.apk
+          fail_on_unmatched_files: true
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -220,4 +317,4 @@ jobs:
         with:
           name: source-apks
           path: dist/*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
