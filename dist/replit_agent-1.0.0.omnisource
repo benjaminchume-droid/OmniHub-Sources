@@ -1,0 +1,10 @@
+{
+  "id": "replit_agent",
+  "name": "Replit Agent",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://replit.com",
+  "baseUrl": "https://replit.com",
+  "format": "omnisource-descriptor"
+}

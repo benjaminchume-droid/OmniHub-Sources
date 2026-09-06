@@ -1,0 +1,10 @@
+{
+  "id": "mcp_redis",
+  "name": "MCP Redis",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://redis.io",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "kimi_web",
+  "name": "Kimi Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://kimi.moonshot.cn",
+  "baseUrl": "https://kimi.moonshot.cn",
+  "format": "omnisource-descriptor"
+}

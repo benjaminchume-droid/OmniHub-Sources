@@ -1,0 +1,10 @@
+{
+  "id": "chatgpt_web",
+  "name": "ChatGPT Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://chatgpt.com",
+  "baseUrl": "https://chatgpt.com",
+  "format": "omnisource-descriptor"
+}

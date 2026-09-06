@@ -1,0 +1,10 @@
+{
+  "id": "poe_web",
+  "name": "Poe",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://poe.com",
+  "baseUrl": "https://poe.com",
+  "format": "omnisource-descriptor"
+}

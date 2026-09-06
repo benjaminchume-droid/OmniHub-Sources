@@ -1,0 +1,10 @@
+{
+  "id": "mcp_linear",
+  "name": "MCP Linear",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://linear.app",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

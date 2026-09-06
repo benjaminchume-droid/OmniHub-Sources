@@ -1,0 +1,10 @@
+{
+  "id": "cursor_web",
+  "name": "Cursor",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://cursor.com",
+  "baseUrl": "https://cursor.com",
+  "format": "omnisource-descriptor"
+}

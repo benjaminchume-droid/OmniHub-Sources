@@ -1,0 +1,10 @@
+{
+  "id": "mcp_kubernetes",
+  "name": "MCP Kubernetes",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://kubernetes.io",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

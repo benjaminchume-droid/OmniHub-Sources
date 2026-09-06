@@ -1,0 +1,10 @@
+{
+  "id": "gemini_web",
+  "name": "Gemini Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://gemini.google.com",
+  "baseUrl": "https://gemini.google.com",
+  "format": "omnisource-descriptor"
+}

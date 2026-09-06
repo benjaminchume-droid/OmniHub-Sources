@@ -1,0 +1,10 @@
+{
+  "id": "perplexity_web",
+  "name": "Perplexity Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.perplexity.ai",
+  "baseUrl": "https://www.perplexity.ai",
+  "format": "omnisource-descriptor"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "notion_ai_web",
+  "name": "Notion AI",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.notion.so",
+  "baseUrl": "https://www.notion.so",
+  "format": "omnisource-descriptor"
+}

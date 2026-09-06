@@ -1,0 +1,10 @@
+{
+  "id": "doubao_web",
+  "name": "Doubao Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.doubao.com",
+  "baseUrl": "https://www.doubao.com",
+  "format": "omnisource-descriptor"
+}

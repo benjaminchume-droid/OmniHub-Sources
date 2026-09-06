@@ -1,0 +1,10 @@
+{
+  "id": "mcp_supabase",
+  "name": "MCP Supabase",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://supabase.com",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

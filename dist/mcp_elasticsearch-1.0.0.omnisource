@@ -1,0 +1,10 @@
+{
+  "id": "mcp_elasticsearch",
+  "name": "MCP Elasticsearch",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.elastic.co",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

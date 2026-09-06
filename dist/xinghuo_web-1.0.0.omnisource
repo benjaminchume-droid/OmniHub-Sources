@@ -1,0 +1,10 @@
+{
+  "id": "xinghuo_web",
+  "name": "iFlytek Spark",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://xinghuo.xfyun.cn",
+  "baseUrl": "https://xinghuo.xfyun.cn",
+  "format": "omnisource-descriptor"
+}

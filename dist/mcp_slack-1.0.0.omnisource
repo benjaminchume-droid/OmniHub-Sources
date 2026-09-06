@@ -1,0 +1,10 @@
+{
+  "id": "mcp_slack",
+  "name": "MCP Slack",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://api.slack.com",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

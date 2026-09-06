@@ -1,0 +1,10 @@
+{
+  "id": "mcp_notion",
+  "name": "MCP Notion",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://developers.notion.com",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

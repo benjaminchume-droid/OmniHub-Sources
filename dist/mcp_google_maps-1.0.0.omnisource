@@ -1,0 +1,10 @@
+{
+  "id": "mcp_google_maps",
+  "name": "MCP Google Maps",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://developers.google.com/maps",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

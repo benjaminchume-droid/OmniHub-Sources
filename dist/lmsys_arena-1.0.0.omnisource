@@ -1,0 +1,10 @@
+{
+  "id": "lmsys_arena",
+  "name": "LMSYS Arena",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://chat.lmsys.org",
+  "baseUrl": "https://chat.lmsys.org",
+  "format": "omnisource-descriptor"
+}

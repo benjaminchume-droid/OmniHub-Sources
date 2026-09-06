@@ -1,0 +1,10 @@
+{
+  "id": "mcp_vercel",
+  "name": "MCP Vercel",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://vercel.com/docs",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

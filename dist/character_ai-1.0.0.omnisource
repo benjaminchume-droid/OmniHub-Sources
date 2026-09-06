@@ -1,0 +1,10 @@
+{
+  "id": "character_ai",
+  "name": "Character.AI",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://character.ai",
+  "baseUrl": "https://character.ai",
+  "format": "omnisource-descriptor"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "phind_web",
+  "name": "Phind",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.phind.com",
+  "baseUrl": "https://www.phind.com",
+  "format": "omnisource-descriptor"
+}

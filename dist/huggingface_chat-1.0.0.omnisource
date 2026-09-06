@@ -1,0 +1,10 @@
+{
+  "id": "huggingface_chat",
+  "name": "HuggingChat",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://huggingface.co/chat",
+  "baseUrl": "https://huggingface.co/chat",
+  "format": "omnisource-descriptor"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "grok_web",
+  "name": "Grok Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://x.com/i/grok",
+  "baseUrl": "https://x.com/i/grok",
+  "format": "omnisource-descriptor"
+}

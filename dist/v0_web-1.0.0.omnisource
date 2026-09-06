@@ -1,0 +1,10 @@
+{
+  "id": "v0_web",
+  "name": "v0 by Vercel",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://v0.dev",
+  "baseUrl": "https://v0.dev",
+  "format": "omnisource-descriptor"
+}

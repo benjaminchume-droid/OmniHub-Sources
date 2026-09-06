@@ -1,0 +1,10 @@
+{
+  "id": "mcp_fetch",
+  "name": "MCP Fetch",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://modelcontextprotocol.io",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

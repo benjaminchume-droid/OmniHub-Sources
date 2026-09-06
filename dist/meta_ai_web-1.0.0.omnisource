@@ -1,0 +1,10 @@
+{
+  "id": "meta_ai_web",
+  "name": "Meta AI",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.meta.ai",
+  "baseUrl": "https://www.meta.ai",
+  "format": "omnisource-descriptor"
+}

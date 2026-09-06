@@ -1,0 +1,10 @@
+{
+  "id": "deepseek_web",
+  "name": "DeepSeek Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://chat.deepseek.com",
+  "baseUrl": "https://chat.deepseek.com",
+  "format": "omnisource-descriptor"
+}

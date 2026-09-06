@@ -1,0 +1,10 @@
+{
+  "id": "github_copilot_chat",
+  "name": "GitHub Copilot Chat",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://github.com/copilot",
+  "baseUrl": "https://github.com/copilot",
+  "format": "omnisource-descriptor"
+}

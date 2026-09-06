@@ -1,0 +1,10 @@
+{
+  "id": "mcp_github",
+  "name": "MCP GitHub",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://github.com/modelcontextprotocol",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

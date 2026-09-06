@@ -1,0 +1,10 @@
+{
+  "id": "yiyan_web",
+  "name": "ERNIE Bot",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://yiyan.baidu.com",
+  "baseUrl": "https://yiyan.baidu.com",
+  "format": "omnisource-descriptor"
+}

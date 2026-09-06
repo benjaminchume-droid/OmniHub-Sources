@@ -1,0 +1,10 @@
+{
+  "id": "claude_web",
+  "name": "Claude Web",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://claude.ai",
+  "baseUrl": "https://claude.ai",
+  "format": "omnisource-descriptor"
+}

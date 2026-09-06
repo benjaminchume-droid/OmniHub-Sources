@@ -1,0 +1,10 @@
+{
+  "id": "mcp_jira",
+  "name": "MCP Jira",
+  "kind": "MCP",
+  "core": "mcpcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://developer.atlassian.com",
+  "baseUrl": "",
+  "format": "omnisource-descriptor"
+}

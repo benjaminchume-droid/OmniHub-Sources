@@ -1,0 +1,10 @@
+{
+  "id": "you_com",
+  "name": "You.com",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://you.com",
+  "baseUrl": "https://you.com",
+  "format": "omnisource-descriptor"
+}

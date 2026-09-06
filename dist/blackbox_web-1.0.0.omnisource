@@ -1,0 +1,10 @@
+{
+  "id": "blackbox_web",
+  "name": "Blackbox AI",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://www.blackbox.ai",
+  "baseUrl": "https://www.blackbox.ai",
+  "format": "omnisource-descriptor"
+}

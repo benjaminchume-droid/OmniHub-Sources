@@ -1,0 +1,10 @@
+{
+  "id": "copilot_web",
+  "name": "Microsoft Copilot",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://copilot.microsoft.com",
+  "baseUrl": "https://copilot.microsoft.com",
+  "format": "omnisource-descriptor"
+}

@@ -1,0 +1,10 @@
+{
+  "id": "tongyi_web",
+  "name": "Tongyi Qianwen",
+  "kind": "WEB_SESSION",
+  "core": "webcore",
+  "revision": "1.0.0",
+  "websiteUrl": "https://tongyi.aliyun.com",
+  "baseUrl": "https://tongyi.aliyun.com",
+  "format": "omnisource-descriptor"
+}
