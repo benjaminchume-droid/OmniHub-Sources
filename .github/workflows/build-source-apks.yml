@@ -1,16 +1,16 @@
-name: Build Source APKs (idempotent)
+name: Build Source APKs
 
 on:
   workflow_dispatch:
     inputs:
       batch_size:
-        description: 'Max sources to build this run'
+        description: 'Max APKs this run'
         required: false
-        default: '50'
+        default: '10'
       kind:
-        description: 'WEB_SESSION, MCP, or ALL'
+        description: 'WEB, MCP, or ALL'
         required: false
-        default: 'ALL'
+        default: 'WEB'
 
 permissions:
   contents: write
@@ -18,6 +18,7 @@ permissions:
 jobs:
   build-batch:
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -27,18 +28,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Decode signing keystore
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
-            echo "Signing secrets present"
-          else
-            echo "Add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD to repo secrets for signed APKs"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "FATAL: KEYSTORE_BASE64 secret missing on OmniHub-Sources"
+            exit 1
           fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+          ls -la keystore.jks
 
-      - name: Restore + select batch
+      - name: Select batch
         env:
           KIND: ${{ github.event.inputs.kind }}
           BATCH: ${{ github.event.inputs.batch_size }}
@@ -48,71 +52,172 @@ jobs:
           python3 << 'PY'
           import json, os
           from pathlib import Path
-          kind = os.environ.get("KIND", "ALL").upper()
-          batch = int(os.environ.get("BATCH", "50"))
+          kind = os.environ.get("KIND", "WEB").upper()
+          batch = int(os.environ.get("BATCH", "10"))
           completed = set(Path(".factory-state/completed.txt").read_text().splitlines())
-          sources = []
-          for part in ["catalog/web.min.json", "catalog/mcp.min.json", "catalog/api.min.json", "catalog/index.min.json"]:
+          priority = [
+            {"id":"chatgpt","name":"ChatGPT","kind":"WEB","websiteUrl":"https://chatgpt.com"},
+            {"id":"claude","name":"Claude","kind":"WEB","websiteUrl":"https://claude.ai"},
+            {"id":"gemini","name":"Gemini","kind":"WEB","websiteUrl":"https://gemini.google.com"},
+            {"id":"perplexity","name":"Perplexity","kind":"WEB","websiteUrl":"https://www.perplexity.ai"},
+            {"id":"deepseek","name":"DeepSeek","kind":"WEB","websiteUrl":"https://chat.deepseek.com"},
+            {"id":"grok","name":"Grok","kind":"WEB","websiteUrl":"https://x.com/i/grok"},
+            {"id":"groq","name":"Groq","kind":"WEB","websiteUrl":"https://chat.groq.com"},
+            {"id":"kimi","name":"Kimi","kind":"WEB","websiteUrl":"https://kimi.moonshot.cn"},
+            {"id":"zai","name":"Z.AI","kind":"WEB","websiteUrl":"https://chat.z.ai"},
+            {"id":"mcp_github","name":"GitHub MCP","kind":"MCP","websiteUrl":"https://github.com"},
+            {"id":"mcp_notion","name":"Notion MCP","kind":"MCP","websiteUrl":"https://notion.so"},
+            {"id":"mcp_slack","name":"Slack MCP","kind":"MCP","websiteUrl":"https://slack.com"},
+          ]
+          sources = list(priority)
+          for part in ["catalog/web.min.json", "catalog/mcp.min.json"]:
               p = Path(part)
               if p.exists():
                   sources.extend(json.loads(p.read_text()).get("sources", []))
-          filtered = []
-          seen = set()
+          filtered, seen = [], set()
           for s in sources:
               sid = s.get("id")
-              if not sid or sid in seen or sid in completed:
-                  continue
-              k = s.get("kind", "").upper()
-              if k == "API":
-                  continue
-              if kind != "ALL" and k != kind and not (kind == "WEB_SESSION" and "WEB" in k):
-                  continue
-              if k in ("WEB_SESSION", "WEB", "MCP", "HYBRID") or kind == "ALL":
-                  seen.add(sid)
-                  filtered.append(s)
+              if not sid or sid in seen or sid in completed: continue
+              k = s.get("kind", "WEB").upper()
+              if k == "API": continue
+              if kind != "ALL" and not (k == kind or (kind == "WEB" and "WEB" in k)): continue
+              seen.add(sid); filtered.append(s)
           batch_list = filtered[:batch]
           Path(".factory-state/batch.json").write_text(json.dumps(batch_list, indent=2))
           print(f"Selected {len(batch_list)} (pool {len(filtered)}, done {len(completed)})")
           PY
 
-      - name: Stamp OmniSource packages
+      - name: Build signed APKs
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          set -e
           python3 << 'PY'
-          import json
+          import json, shutil, subprocess, textwrap
           from pathlib import Path
           batch = json.loads(Path(".factory-state/batch.json").read_text())
-          out = Path("dist"); out.mkdir(exist_ok=True)
+          root = Path("factory-work")
+          if root.exists(): shutil.rmtree(root)
+          root.mkdir()
+          (root / "settings.gradle.kts").write_text('rootProject.name = "OmniSource"\ninclude(":app")\n')
+          (root / "build.gradle.kts").write_text('plugins { id("com.android.application") version "8.2.2" apply false }\n')
+          (root / "gradle.properties").write_text("org.gradle.jvmargs=-Xmx2g\nandroid.useAndroidX=true\n")
+          app = root / "app"
+          (app / "src/main/java/com/omnisource").mkdir(parents=True)
+          (app / "src/main/res/values").mkdir(parents=True)
+          shutil.copy("keystore.jks", root / "keystore.jks")
+          # gradle wrapper once
+          (root / "gradle/wrapper").mkdir(parents=True)
+          subprocess.check_call(["bash","-lc", f"cd {root} && curl -fsSL -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.7.0/gradle/wrapper/gradle-wrapper.jar && curl -fsSL -o gradlew https://raw.githubusercontent.com/gradle/gradle/v8.7.0/gradlew && chmod +x gradlew && printf '%s\n' 'distributionBase=GRADLE_USER_HOME' 'distributionPath=wrapper/dists' 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.7-bin.zip' 'networkTimeout=10000' 'validateDistributionUrl=true' 'zipStoreBase=GRADLE_USER_HOME' 'zipStorePath=wrapper/dists' > gradle/wrapper/gradle-wrapper.properties"])
           for s in batch:
-              sid = s["id"]
-              core = s.get("core") or ("webcore" if "WEB" in s.get("kind","").upper() else "mcpcore")
-              pkg = {
-                "id": sid,
-                "name": s.get("name"),
-                "kind": s.get("kind"),
-                "core": core,
-                "revision": s.get("revision", "1.0.0"),
-                "websiteUrl": s.get("websiteUrl", ""),
-                "baseUrl": s.get("baseUrl", ""),
-                "format": "omnisource-descriptor"
-              }
-              (out / f"{sid}-1.0.0.omnisource").write_text(json.dumps(pkg, indent=2))
-              with open(".factory-state/completed.txt", "a") as f:
-                  f.write(sid + "\n")
-              print("stamped", sid, core)
+              sid = s["id"]; name = s.get("name", sid)
+              url = s.get("websiteUrl") or s.get("baseUrl") or "https://example.com"
+              kind = s.get("kind", "WEB").upper()
+              suffix = sid.replace("-", "_").replace(".", "_").lower()
+              pkg = f"com.omnisource.{suffix}"
+              print("BUILD", sid)
+              (app / "build.gradle.kts").write_text(textwrap.dedent(f'''
+              plugins {{ id("com.android.application") }}
+              android {{
+                namespace = "{pkg}"
+                compileSdk = 34
+                defaultConfig {{
+                  applicationId = "{pkg}"
+                  minSdk = 26
+                  targetSdk = 34
+                  versionCode = 1
+                  versionName = "1.0.0"
+                }}
+                signingConfigs {{
+                  create("release") {{
+                    storeFile = file("../keystore.jks")
+                    storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                    keyAlias = System.getenv("KEY_ALIAS") ?: "omnihub"
+                    keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                  }}
+                }}
+                buildTypes {{
+                  release {{
+                    isMinifyEnabled = true
+                    signingConfig = signingConfigs.getByName("release")
+                    proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+                  }}
+                }}
+                compileOptions {{
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+                }}
+              }}
+              dependencies {{ implementation("androidx.appcompat:appcompat:1.6.1") }}
+              '''))
+              (app / "src/main/AndroidManifest.xml").write_text(f'''<?xml version="1.0" encoding="utf-8"?>
+              <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+                <uses-permission android:name="android.permission.INTERNET"/>
+                <application android:label="{name}" android:icon="@android:drawable/sym_def_app_icon" android:allowBackup="false">
+                  <meta-data android:name="omnihub.source.id" android:value="{sid}"/>
+                  <meta-data android:name="omnihub.source.name" android:value="{name}"/>
+                  <meta-data android:name="omnihub.source.kind" android:value="{kind}"/>
+                  <meta-data android:name="omnihub.source.url" android:value="{url}"/>
+                  <activity android:name=".BridgeActivity" android:exported="true">
+                    <intent-filter>
+                      <action android:name="android.intent.action.MAIN"/>
+                      <category android:name="android.intent.category.LAUNCHER"/>
+                    </intent-filter>
+                  </activity>
+                </application>
+              </manifest>
+              ''')
+              (app / "src/main/java/com/omnisource/BridgeActivity.kt").write_text(f'''package {pkg}
+              import android.app.Activity
+              import android.os.Bundle
+              import android.widget.TextView
+              class BridgeActivity : Activity() {{
+                override fun onCreate(savedInstanceState: Bundle?) {{
+                  super.onCreate(savedInstanceState)
+                  val tv = TextView(this)
+                  tv.text = "{name}\nOmniSource {kind}\nUse from OmniHub"
+                  tv.setPadding(48,48,48,48)
+                  setContentView(tv)
+                }}
+              }}
+              ''')
+              (app / "src/main/res/values/strings.xml").write_text(f'<resources><string name="app_name">{name}</string></resources>\n')
+              r = subprocess.run(["bash","-lc", f"cd {root} && ./gradlew :app:assembleRelease --no-daemon"], capture_output=True, text=True)
+              if r.returncode != 0:
+                  print(r.stdout[-1500:]); print(r.stderr[-1500:]); print("FAIL", sid); continue
+              apk = next((root / "app/build/outputs/apk/release").glob("*.apk"), None)
+              if not apk:
+                  print("NO APK", sid); continue
+              dest = Path("dist") / f"{sid}-1.0.0.apk"
+              shutil.copy(apk, dest)
+              with open(".factory-state/completed.txt", "a") as f: f.write(sid + "\n")
+              print("OK", sid, dest.stat().st_size)
           PY
 
-      - name: Commit factory state
+      - name: Commit state
         run: |
           git config user.name "omni-factory"
           git config user.email "factory@omnihub.local"
-          git add .factory-state dist || true
-          git diff --staged --quiet || git commit -m "factory: batch $(date -u +%Y-%m-%dT%H:%MZ)"
+          git add .factory-state dist/*.apk 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "factory: signed APK batch $(date -u +%Y-%m-%dT%H:%MZ)"
           git push || true
 
-      - name: Upload batch artifacts
+      - name: Release APKs
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: sources-${{ github.run_number }}
+          name: OmniSource APKs ${{ github.run_number }}
+          body: Signed provider APKs for OmniHub Store. Enable Install unknown apps for OmniHub.
+          files: dist/*.apk
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: omnisource-batch
-          path: |
-            dist/
-            .factory-state/completed.txt
+          name: source-apks
+          path: dist/*.apk
+          if-no-files-found: warn
