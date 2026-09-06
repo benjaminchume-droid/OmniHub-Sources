@@ -6,11 +6,15 @@ on:
       batch_size:
         description: 'Max APKs this run'
         required: false
-        default: '10'
+        default: '25'
       kind:
         description: 'WEB, MCP, or ALL'
         required: false
         default: 'ALL'
+      force_rebuild:
+        description: 'Ignore completed list and rebuild (1=yes)'
+        required: false
+        default: '0'
 
 permissions:
   contents: write
@@ -46,6 +50,7 @@ jobs:
         env:
           KIND: ${{ github.event.inputs.kind }}
           BATCH: ${{ github.event.inputs.batch_size }}
+          FORCE: ${{ github.event.inputs.force_rebuild }}
         run: |
           mkdir -p .factory-state dist
           touch .factory-state/apk-completed.txt
@@ -53,46 +58,69 @@ jobs:
           import json, os
           from pathlib import Path
           kind = os.environ.get("KIND", "ALL").upper()
-          batch = int(os.environ.get("BATCH", "10"))
-          completed = set(Path(".factory-state/apk-completed.txt").read_text().splitlines())
+          batch = int(os.environ.get("BATCH", "25"))
+          force = os.environ.get("FORCE", "0") == "1"
+          completed = set()
+          if not force:
+              completed = set(Path(".factory-state/apk-completed.txt").read_text().splitlines())
+          else:
+              Path(".factory-state/apk-completed.txt").write_text("")
+
           priority = [
             {"id":"chatgpt","name":"ChatGPT","kind":"WEB","websiteUrl":"https://chatgpt.com"},
             {"id":"claude","name":"Claude","kind":"WEB","websiteUrl":"https://claude.ai"},
-            {"id":"gemini","name":"Gemini","kind":"WEB","websiteUrl":"https://gemini.google.com"},
+            {"id":"gemini","name":"Gemini","kind":"WEB","websiteUrl":"https://gemini.google.com/app"},
             {"id":"perplexity","name":"Perplexity","kind":"WEB","websiteUrl":"https://www.perplexity.ai"},
             {"id":"deepseek","name":"DeepSeek","kind":"WEB","websiteUrl":"https://chat.deepseek.com"},
             {"id":"grok","name":"Grok","kind":"WEB","websiteUrl":"https://x.com/i/grok"},
             {"id":"groq","name":"Groq","kind":"WEB","websiteUrl":"https://chat.groq.com"},
             {"id":"kimi","name":"Kimi","kind":"WEB","websiteUrl":"https://kimi.moonshot.cn"},
             {"id":"zai","name":"Z.AI","kind":"WEB","websiteUrl":"https://chat.z.ai"},
+            {"id":"qwen","name":"Qwen","kind":"WEB","websiteUrl":"https://chat.qwen.ai"},
+            {"id":"mistral","name":"Le Chat","kind":"WEB","websiteUrl":"https://chat.mistral.ai"},
+            {"id":"poe","name":"Poe","kind":"WEB","websiteUrl":"https://poe.com"},
+            {"id":"pi","name":"Pi","kind":"WEB","websiteUrl":"https://pi.ai"},
+            {"id":"you","name":"You.com","kind":"WEB","websiteUrl":"https://you.com"},
+            {"id":"huggingface","name":"HuggingChat","kind":"WEB","websiteUrl":"https://huggingface.co/chat"},
+            {"id":"meta_ai","name":"Meta AI","kind":"WEB","websiteUrl":"https://www.meta.ai"},
+            {"id":"bing","name":"Copilot","kind":"WEB","websiteUrl":"https://copilot.microsoft.com"},
             {"id":"mcp_github","name":"GitHub MCP","kind":"MCP","websiteUrl":"https://github.com"},
-            {"id":"mcp_notion","name":"Notion MCP","kind":"MCP","websiteUrl":"https://notion.so"},
-            {"id":"mcp_slack","name":"Slack MCP","kind":"MCP","websiteUrl":"https://slack.com"},
-            {"id":"mcp_filesystem","name":"Filesystem MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
-            {"id":"mcp_fetch","name":"Fetch MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
-            {"id":"mcp_memory","name":"Memory MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
-            {"id":"mcp_sqlite","name":"SQLite MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
-            {"id":"mcp_brave_search","name":"Brave Search MCP","kind":"MCP","websiteUrl":"https://brave.com/search"},
+            {"id":"mcp_notion","name":"Notion MCP","kind":"MCP","websiteUrl":"https://www.notion.so"},
+            {"id":"mcp_slack","name":"Slack MCP","kind":"MCP","websiteUrl":"https://app.slack.com"},
+            {"id":"mcp_files","name":"Files MCP","kind":"MCP","websiteUrl":"https://drive.google.com"},
             {"id":"mcp_calendar","name":"Calendar MCP","kind":"MCP","websiteUrl":"https://calendar.google.com"},
-            {"id":"mcp_gmail","name":"Gmail MCP","kind":"MCP","websiteUrl":"https://mail.google.com"},
+            {"id":"mcp_mail","name":"Mail MCP","kind":"MCP","websiteUrl":"https://mail.google.com"},
+            {"id":"mcp_browser","name":"Browser MCP","kind":"MCP","websiteUrl":"https://www.google.com"},
             {"id":"mcp_linear","name":"Linear MCP","kind":"MCP","websiteUrl":"https://linear.app"},
           ]
           sources = list(priority)
-          for part in ["catalog/web.min.json", "catalog/mcp.min.json"]:
+          for part in ["catalog/providers.min.json", "catalog/web.min.json", "catalog/mcp.min.json"]:
               p = Path(part)
-              if p.exists():
-                  sources.extend(json.loads(p.read_text()).get("sources", []))
+              if not p.exists(): continue
+              data = json.loads(p.read_text())
+              items = data.get("providers") or data.get("sources") or []
+              for it in items:
+                  sid = it.get("id")
+                  if not sid: continue
+                  sources.append({
+                      "id": sid,
+                      "name": it.get("name", sid),
+                      "kind": it.get("kind", "WEB"),
+                      "websiteUrl": it.get("url") or it.get("websiteUrl") or "https://example.com",
+                  })
           filtered, seen = [], set()
           for s in sources:
               sid = s.get("id")
               if not sid or sid in seen or sid in completed: continue
               k = s.get("kind", "WEB").upper()
               if k == "API": continue
-              if kind != "ALL" and not (k == kind or (kind == "WEB" and "WEB" in k)): continue
-              seen.add(sid); filtered.append(s)
+              if kind != "ALL" and k != kind and not (kind == "WEB" and "WEB" in k):
+                  continue
+              seen.add(sid)
+              filtered.append(s)
           batch_list = filtered[:batch]
           Path(".factory-state/batch.json").write_text(json.dumps(batch_list, indent=2))
-          print(f"Selected {len(batch_list)} (pool {len(filtered)}, done {len(completed)})")
+          print(f"Selected {len(batch_list)} (pool {len(filtered)}, done {len(completed)}, force={force})")
           PY
 
       - name: Build signed APKs
@@ -109,6 +137,10 @@ jobs:
           batch = json.loads(Path(".factory-state/batch.json").read_text())
           if not batch:
               print("Empty batch"); sys.exit(0)
+
+          # 4-part source version for this factory wave
+          SRC_VER = "1.0.0.1"
+          SRC_CODE = 10001
 
           root = Path("factory-work")
           if root.exists(): shutil.rmtree(root)
@@ -157,8 +189,8 @@ jobs:
                   applicationId = "{pkg}"
                   minSdk = 26
                   targetSdk = 34
-                  versionCode = 1
-                  versionName = "1.0.0"
+                  versionCode = {SRC_CODE}
+                  versionName = "{SRC_VER}"
                 }}
                 signingConfigs {{
                   create("release") {{
@@ -182,7 +214,7 @@ jobs:
               dependencies {{ implementation("androidx.appcompat:appcompat:1.6.1") }}
               '''))
 
-              # NO LAUNCHER — hidden from home screen / app drawer
+              # NO LAUNCHER / NO MAIN — hidden from home screen
               (app / "src/main/AndroidManifest.xml").write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
@@ -193,6 +225,7 @@ jobs:
                 f'    <meta-data android:name="omnihub.source.name" android:value="{name}"/>\n'
                 f'    <meta-data android:name="omnihub.source.kind" android:value="{kind}"/>\n'
                 f'    <meta-data android:name="omnihub.source.url" android:value="{url}"/>\n'
+                f'    <meta-data android:name="omnihub.source.version" android:value="{SRC_VER}"/>\n'
                 '    <activity android:name=".BridgeActivity" android:exported="false"/>\n'
                 '  </application>\n'
                 '</manifest>\n'
@@ -227,7 +260,7 @@ jobs:
               apk = next((root / "app/build/outputs/apk/release").glob("*.apk"), None)
               if not apk:
                   print("NO APK", sid); continue
-              dest = Path("dist") / f"{sid}-1.0.0.apk"
+              dest = Path("dist") / f"{sid}-{SRC_VER}.apk"
               shutil.copy(apk, dest)
               with open(".factory-state/apk-completed.txt", "a") as f:
                   f.write(sid + "\n")
@@ -255,9 +288,13 @@ jobs:
       - name: Release APKs
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: sources-${{ github.run_number }}
-          name: OmniSource APKs ${{ github.run_number }}
-          body: Signed provider APKs for OmniHub Store (no home-screen icons).
+          tag_name: sources-1.0.0.1-${{ github.run_number }}
+          name: OmniSource APKs 1.0.0.1 (${{ github.run_number }})
+          body: |
+            Signed provider APKs for OmniHub Store.
+            - versionName 1.0.0.1
+            - NO home-screen / launcher icons
+            - WebView PageSensor engine in OmniHub core
           files: dist/*.apk
           fail_on_unmatched_files: true
         env:
