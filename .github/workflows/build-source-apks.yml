@@ -6,11 +6,11 @@ on:
       batch_size:
         description: 'Max APKs this run'
         required: false
-        default: '5'
+        default: '10'
       kind:
         description: 'WEB, MCP, or ALL'
         required: false
-        default: 'WEB'
+        default: 'ALL'
 
 permissions:
   contents: write
@@ -52,8 +52,8 @@ jobs:
           python3 << 'PY'
           import json, os
           from pathlib import Path
-          kind = os.environ.get("KIND", "WEB").upper()
-          batch = int(os.environ.get("BATCH", "5"))
+          kind = os.environ.get("KIND", "ALL").upper()
+          batch = int(os.environ.get("BATCH", "10"))
           completed = set(Path(".factory-state/apk-completed.txt").read_text().splitlines())
           priority = [
             {"id":"chatgpt","name":"ChatGPT","kind":"WEB","websiteUrl":"https://chatgpt.com"},
@@ -66,6 +66,16 @@ jobs:
             {"id":"kimi","name":"Kimi","kind":"WEB","websiteUrl":"https://kimi.moonshot.cn"},
             {"id":"zai","name":"Z.AI","kind":"WEB","websiteUrl":"https://chat.z.ai"},
             {"id":"mcp_github","name":"GitHub MCP","kind":"MCP","websiteUrl":"https://github.com"},
+            {"id":"mcp_notion","name":"Notion MCP","kind":"MCP","websiteUrl":"https://notion.so"},
+            {"id":"mcp_slack","name":"Slack MCP","kind":"MCP","websiteUrl":"https://slack.com"},
+            {"id":"mcp_filesystem","name":"Filesystem MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
+            {"id":"mcp_fetch","name":"Fetch MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
+            {"id":"mcp_memory","name":"Memory MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
+            {"id":"mcp_sqlite","name":"SQLite MCP","kind":"MCP","websiteUrl":"https://modelcontextprotocol.io"},
+            {"id":"mcp_brave_search","name":"Brave Search MCP","kind":"MCP","websiteUrl":"https://brave.com/search"},
+            {"id":"mcp_calendar","name":"Calendar MCP","kind":"MCP","websiteUrl":"https://calendar.google.com"},
+            {"id":"mcp_gmail","name":"Gmail MCP","kind":"MCP","websiteUrl":"https://mail.google.com"},
+            {"id":"mcp_linear","name":"Linear MCP","kind":"MCP","websiteUrl":"https://linear.app"},
           ]
           sources = list(priority)
           for part in ["catalog/web.min.json", "catalog/mcp.min.json"]:
@@ -172,45 +182,36 @@ jobs:
               dependencies {{ implementation("androidx.appcompat:appcompat:1.6.1") }}
               '''))
 
+              # NO LAUNCHER — hidden from home screen / app drawer
               (app / "src/main/AndroidManifest.xml").write_text(
                 '<?xml version="1.0" encoding="utf-8"?>\n'
                 '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
                 '  <uses-permission android:name="android.permission.INTERNET"/>\n'
+                '  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>\n'
                 f'  <application android:label="{name}" android:icon="@android:drawable/sym_def_app_icon" android:allowBackup="false">\n'
                 f'    <meta-data android:name="omnihub.source.id" android:value="{sid}"/>\n'
+                f'    <meta-data android:name="omnihub.source.name" android:value="{name}"/>\n'
                 f'    <meta-data android:name="omnihub.source.kind" android:value="{kind}"/>\n'
                 f'    <meta-data android:name="omnihub.source.url" android:value="{url}"/>\n'
-                '    <activity android:name=".BridgeActivity" android:exported="true">\n'
-                '      <intent-filter>\n'
-                '        <action android:name="android.intent.action.MAIN"/>\n'
-                '        <category android:name="android.intent.category.LAUNCHER"/>\n'
-                '      </intent-filter>\n'
-                '    </activity>\n'
+                '    <activity android:name=".BridgeActivity" android:exported="false"/>\n'
                 '  </application>\n'
                 '</manifest>\n'
               )
 
-              # Pure Java — no Kotlin plugin required
               (java_dir / "BridgeActivity.java").write_text(
                 f'package {pkg};\n'
                 'import android.app.Activity;\n'
                 'import android.os.Bundle;\n'
-                'import android.widget.TextView;\n'
                 'public class BridgeActivity extends Activity {\n'
                 '  @Override protected void onCreate(Bundle b) {\n'
                 '    super.onCreate(b);\n'
-                '    TextView tv = new TextView(this);\n'
-                f'    tv.setText("{name}\\nOmniSource {kind}");\n'
-                '    tv.setPadding(48,48,48,48);\n'
-                '    setContentView(tv);\n'
+                '    finish();\n'
                 '  }\n'
                 '}\n'
               )
-              # Remove stale kotlin file if present
               kt = java_dir / "BridgeActivity.kt"
               if kt.exists(): kt.unlink()
 
-              # Clean strings.xml — NO trailing junk
               (app / "src/main/res/values/strings.xml").write_text(
                 f'<resources><string name="app_name">{name}</string></resources>\n'
               )
@@ -256,7 +257,7 @@ jobs:
         with:
           tag_name: sources-${{ github.run_number }}
           name: OmniSource APKs ${{ github.run_number }}
-          body: Signed provider APKs for OmniHub Store.
+          body: Signed provider APKs for OmniHub Store (no home-screen icons).
           files: dist/*.apk
           fail_on_unmatched_files: true
         env:
